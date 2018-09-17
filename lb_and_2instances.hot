@@ -1,6 +1,6 @@
 heat_template_version: 2015-04-30
 
-description: template to deploy a load balancer and two nodes behind it
+description: template to deploy a load balancer and two nodes (running apache in a docker container) behind it
 
 parameters:
   public_net:

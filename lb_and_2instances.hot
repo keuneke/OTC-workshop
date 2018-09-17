@@ -1,0 +1,158 @@
+heat_template_version: 2015-04-30
+
+description: template to deploy a load balancer and two nodes behind it
+
+parameters:
+  public_net:
+    type: string
+    default: 0a2228f2-7f8a-45f1-8e09-9039e1d09975
+    description: id of the used public network - can be found by openstack floating ip list
+
+  private_net:
+    type: string
+    default: b1901651-2e27-42a4-819d-d52cae86eec4
+    description: network id of the VPC where the servers shall be placed
+
+  private_subnet:
+    type: string
+    default: e5215be8-0bd4-4bc2-a8ed-b93f7d7b04c3 
+    description: subnetwork id where the servers shall be placed
+
+  secgroup_id:
+    type: string
+    default: a170f911-87b6-49d1-91ef-ba1886af424d
+    description: id of the security group used for the servers and the LB
+
+  image_id:
+    type: string
+    default: d2389283-83c8-4474-aed9-d83b7f86ef07
+    description: for the server use opensuse with docker daemon installed
+
+resources:
+  
+############################
+# Load Balancer            #
+############################
+
+  myloadbalancer:
+    type: OS::Neutron::LBaaS::LoadBalancer
+    properties:
+       vip_subnet: { get_param: private_subnet }
+       name: myloadbalancer                        # this is necessary, otherwise the system appends a random string to ensure uniqueness
+
+  lb_vip_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net }
+      port_id: { get_attr: [ myloadbalancer, vip_port_id ] }
+    depends_on: myloadbalancer
+
+  mylistener:
+    type: OS::Neutron::LBaaS::Listener
+    properties:
+      loadbalancer: myloadbalancer
+      protocol: HTTP
+      protocol_port: 8123
+      name: mylistener
+    depends_on: myloadbalancer
+
+  mypool:
+    type: OS::Neutron::LBaaS::Pool
+    properties:
+      lb_algorithm: ROUND_ROBIN
+      listener: mylistener
+      protocol: HTTP
+      name: mypool
+    depends_on: mylistener
+
+  poolmember1:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: mypool
+      address:  { get_attr: [front_node_1, first_address] } 
+      protocol_port: 80
+      subnet: { get_param: private_subnet } 
+    depends_on: front_node_1
+
+  poolmember2:
+    type: OS::Neutron::LBaaS::PoolMember
+    properties:
+      pool: mypool
+      address:  { get_attr: [front_node_2, first_address] }
+      protocol_port: 80
+      subnet: { get_param: private_subnet }
+    depends_on: front_node_2
+
+  myhealthcheck:
+    type: OS::Neutron::LBaaS::HealthMonitor
+    properties:
+      pool: mypool
+      delay: 20     # documentation says this is milliseconds, but I suspect seconds
+      max_retries: 3
+      timeout: 20   # documentation says this is milliseconds
+      type: HTTP
+    depends_on: mypool
+
+##############################
+# Server Instances           #
+##############################
+
+  front_node_1_port:
+    type: OS::Neutron::Port
+    properties:
+       network_id: { get_param: private_net }
+       security_groups: [ get_param: secgroup_id ]
+       fixed_ips:
+                - subnet_id: { get_param: private_subnet }
+
+  front_node_1:
+    type: OS::Nova::Server
+    properties:
+      key_name: SK-Openlab
+      image: { get_param: image_id }
+      flavor: s2.medium.1
+      networks:
+      - port: { get_resource: front_node_1_port } 
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sudo -i
+            docker pull nimmis/apache                                 # note that for this to succeed, SNAT must be enabled in the VPC used!!
+            docker run -d  -p 80:80 -v /home/linux:/var/www/html nimmis/apache
+            echo "<html><body bgcolor='green'>This is Node 1</body></html> " > /home/linux/index.html
+          params:
+            $shared_ip: s2.medium.1
+
+  front_node_2_port:
+    type: OS::Neutron::Port
+    properties:
+       network_id: { get_param: private_net }
+       security_groups: [ get_param: secgroup_id ]
+       fixed_ips:
+                - subnet_id: { get_param: private_subnet }
+
+  front_node_2:
+    type: OS::Nova::Server
+    properties:
+      key_name: SK-Openlab
+      image: { get_param: image_id }
+      flavor: s2.medium.1
+      networks:
+      - port: { get_resource: front_node_2_port }
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            sudo -i
+            docker pull nimmis/apache
+            docker run -d -p 80:80 -v /home/linux:/var/www/html nimmis/apache
+            echo "<html><body bgcolor='red'>This is Node 2</body></html> " > /home/linux/index.html
+          params:
+            $shared_ip: s2.medium.1
+
+ 
+outputs:
+  instance_ip:
+    description: The public IP address of the load balancer, remember to use port 8123 from outside
+    value: { get_attr: [lb_vip_floating_ip, floating_ip_address] }

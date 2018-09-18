@@ -38,7 +38,6 @@ resources:
     type: OS::Neutron::LBaaS::LoadBalancer
     properties:
        vip_subnet: { get_param: private_subnet }
-       name: myloadbalancer                        # this is necessary, otherwise the system appends a random string to ensure uniqueness
 
   lb_vip_floating_ip:
     type: OS::Neutron::FloatingIP
@@ -50,25 +49,23 @@ resources:
   mylistener:
     type: OS::Neutron::LBaaS::Listener
     properties:
-      loadbalancer: myloadbalancer
+      loadbalancer: { get_resource: myloadbalancer }
       protocol: HTTP
       protocol_port: 8123
-      name: mylistener
     depends_on: myloadbalancer
 
   mypool:
     type: OS::Neutron::LBaaS::Pool
     properties:
       lb_algorithm: ROUND_ROBIN
-      listener: mylistener
+      listener: { get_resource: mylistener }
       protocol: HTTP
-      name: mypool
     depends_on: mylistener
 
   poolmember1:
     type: OS::Neutron::LBaaS::PoolMember
     properties:
-      pool: mypool
+      pool: { get_resource: mypool }
       address:  { get_attr: [front_node_1, first_address] } 
       protocol_port: 80
       subnet: { get_param: private_subnet } 
@@ -77,7 +74,7 @@ resources:
   poolmember2:
     type: OS::Neutron::LBaaS::PoolMember
     properties:
-      pool: mypool
+      pool: { get_resource: mypool }
       address:  { get_attr: [front_node_2, first_address] }
       protocol_port: 80
       subnet: { get_param: private_subnet }
@@ -86,7 +83,7 @@ resources:
   myhealthcheck:
     type: OS::Neutron::LBaaS::HealthMonitor
     properties:
-      pool: mypool
+      pool: { get_resource: mypool }
       delay: 20     # documentation says this is milliseconds, but I suspect seconds
       max_retries: 3
       timeout: 20   # documentation says this is milliseconds

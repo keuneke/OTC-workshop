@@ -23,10 +23,20 @@ parameters:
     default: a170f911-87b6-49d1-91ef-ba1886af424d
     description: id of the security group used for the server
 
-  image_id:
+  the_flavor:
     type: string
-    default: d2389283-83c8-4474-aed9-d83b7f86ef07
+    default: s2.medium.1
+    description: flavor to be used for the compute instance
+
+  the_image:
+    type: string
+    default: Standard_openSUSE_42_Docker_latest
     description: use opensuse with docker daemon installed
+
+  the_key:
+    type: string
+    default: SK-Openlab
+    description: name/id of the keypair to be used to access the instance via SSH
 
 resources:
   my_instance_port:
@@ -46,9 +56,9 @@ resources:
   my_instance:
     type: OS::Nova::Server
     properties:
-      key_name: SK-Openlab
-      image: { get_param: image_id }
-      flavor: s2.medium.1
+      key_name: { get_param: the_key }
+      image: { get_param: the_image }
+      flavor: { get_param: the_flavor }
       networks:
       - port: { get_resource: my_instance_port } 
       user_data:
@@ -60,7 +70,7 @@ resources:
             docker run -d -p 8123:80 -v /home/linux:/var/www/html nimmis/apache
             echo "<html><body bgcolor='green'>This is Node 1</body></html> " > /home/linux/index.html
           params:
-            $shared_ip: s2.medium.1
+            $shared_ip: { get_param: the_flavor }
  
 outputs:
   instance_ip:

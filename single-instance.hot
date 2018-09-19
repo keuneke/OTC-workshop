@@ -1,6 +1,6 @@
 heat_template_version: 2015-10-15
 
-description: Simple template to deploy a single compute instance
+description: Simple template to deploy a single compute instance that runs an apache in a docker container, exposing port 8123
 
 parameters:
   public_net:

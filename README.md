@@ -12,7 +12,7 @@ Prerequisits: To use the templates you must have
        export OS_DOMAIN_NAME=<your OTC domain>
        export OS_USERNAME=<your OTC username>
        export OS_IDENTITY_API_VERSION=3)
-- you can put your OTC-password in there, too, but that is not really safe; rather source it separately outside of .ostackrc
+- you can put your OTC-password in there, too, but that is not really safe; rather export it separately outside of .ostackrc
 
 
 Further useful documentation of the used tools:

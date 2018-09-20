@@ -4,7 +4,8 @@ heat orchestration templates to be used with the Open Telekom Cloud
 Prerequisits: To use the templates you must have
 - the python-openstack-client installed 
 - the python-heatclient installed
-- some of the provided templates may additionally require the OTC-extensions- an account on the Open Telekom Cloud
+- some of the provided templates may additionally require the OTC-extensions
+- an account on the Open Telekom Cloud
 - the credentials of that account put into .ostackrc (minimally that is:
        export OS_AUTH_URL=https://iam.eu-de.otc.t-systems.com/v3
        export OS_PROJECT_NAME=eu-de
